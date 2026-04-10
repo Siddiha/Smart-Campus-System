@@ -37,6 +37,7 @@ This API provides a seamless interface for campus facilities managers and automa
 | POST | /api/v1/sensors/{sensorId}/readings | Add a new reading for a sensor |
 
 ---
+## 📁 Project Structure
 
 smart-campus-rest-api/
 ├── pom.xml
