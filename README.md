@@ -36,36 +36,35 @@ This API provides a seamless interface for campus facilities managers and automa
 | GET | /api/v1/sensors/{sensorId}/readings | Get all readings for a sensor |
 | POST | /api/v1/sensors/{sensorId}/readings | Add a new reading for a sensor |
 
----
 ## 📁 Project Structure
 
+```
 smart-campus-rest-api/
 ├── pom.xml
 └── src/main/java/com/smartcampus/
-├── Main.java                            # Entry point, starts Grizzly server
-├── SmartCampusApplication.java          # JAX-RS Application config
-├── model/
-│   ├── Room.java                        # Room POJO
-│   ├── Sensor.java                      # Sensor POJO
-│   └── SensorReading.java               # SensorReading POJO
-├── resource/
-│   ├── DiscoveryResource.java           # GET /api/v1/info
-│   ├── RoomResource.java                # Room endpoints
-│   ├── SensorResource.java              # Sensor endpoints
-│   └── SensorReadingResource.java       # Sub-resource for readings
-├── storage/
-│   └── DataStore.java                   # In-memory singleton data store
-└── exception/
-├── RoomNotEmptyException.java
-├── LinkedResourceNotFoundException.java
-├── SensorUnavailableException.java
-└── mappers/
-├── RoomNotEmptyMapper.java          # 409 Conflict
-├── LinkedResourceNotFoundMapper.java # 422 Unprocessable Entity
-├── SensorUnavailableMapper.java      # 403 Forbidden
-└── GlobalExceptionMapper.java        # 500 Internal Server Error
-
----
+    ├── Main.java
+    ├── SmartCampusApplication.java
+    ├── model/
+    │   ├── Room.java
+    │   ├── Sensor.java
+    │   └── SensorReading.java
+    ├── resource/
+    │   ├── DiscoveryResource.java
+    │   ├── RoomResource.java
+    │   ├── SensorResource.java
+    │   └── SensorReadingResource.java
+    ├── storage/
+    │   └── DataStore.java
+    └── exception/
+        ├── RoomNotEmptyException.java
+        ├── LinkedResourceNotFoundException.java
+        ├── SensorUnavailableException.java
+        └── mappers/
+            ├── RoomNotEmptyMapper.java
+            ├── LinkedResourceNotFoundMapper.java
+            ├── SensorUnavailableMapper.java
+            └── GlobalExceptionMapper.java
+```
 
 ## ⚙️ How to Build and Run
 
