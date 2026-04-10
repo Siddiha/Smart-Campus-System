@@ -190,5 +190,3 @@ The API handles all errors gracefully and never exposes raw Java stack traces.
 - **University:** University of Westminster
 - **Year:** 2025/26
 
-
-## 📁 Project Structure
