@@ -1,4 +1,4 @@
-#  Smart Campus REST API
+#  Smart Campus System
 
 A fully functional RESTful API built for the University of Westminster's "Smart Campus" initiative. This API manages Rooms and Sensors across the campus, built using JAX-RS (Jersey 2.41) with an embedded Grizzly HTTP Server.
 
