@@ -1,4 +1,4 @@
-# Smart Campus System — REST API
+# Smart Campus System
 
 A fully functional RESTful API built for the University of Westminster's **Smart Campus** initiative. The system manages physical **Rooms** and **Sensors** across campus, supporting full CRUD operations, historical sensor reading logs, filtered search, and robust error handling — all built using **JAX-RS (Jersey 2.41)** with an embedded **Grizzly HTTP Server**.
 
@@ -86,7 +86,7 @@ This keeps each class focused and clean.
 #### 3. Exception Mapper Pattern
 Custom exceptions are thrown in business logic and **mapped to HTTP responses** by dedicated mapper classes annotated with `@Provider`. Jersey automatically intercepts the exception and calls the mapper:
 
-```
+```text
 throw new SensorUnavailableException("...")
        ↓
 SensorUnavailableMapper.toResponse(exception)
@@ -427,7 +427,8 @@ All error responses follow this consistent JSON structure:
 Jersey automatically scans for classes annotated with `@Provider` that implement `ExceptionMapper<T>`. When a resource method throws an exception, Jersey finds the matching mapper and calls its `toResponse()` method to build the HTTP response. This decouples error-handling logic from business logic.
 
 Example flow for a maintenance sensor:
-```
+
+```text
 POST /sensors/TEMP-001/readings
         ↓
 SensorReadingResource.addReading()
@@ -443,7 +444,7 @@ HTTP 403 { "error": "Sensor 'TEMP-001' is currently under MAINTENANCE..." }
 
 ## Project Structure
 
-```
+```text
 Smart-Campus-System/
 ├── pom.xml                          ← Maven build config, all dependencies declared here
 └── src/main/java/com/smartcampus/
@@ -507,13 +508,15 @@ git clone https://github.com/YOUR_USERNAME/smart-campus-rest-api.git
 - Right-click the project → **Run**
 - OR open [Main.java](src/main/java/com/smartcampus/Main.java) and click the green ▶ Run button
 - Wait for this confirmation in the output window:
-```
+
+```text
 Smart Campus API is running at http://localhost:8081/api/v1
 Press ENTER to stop the server...
 ```
 
 **Step 5** — The API is live at:
-```
+
+```text
 http://localhost:8081/api/v1
 ```
 
