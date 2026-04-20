@@ -195,15 +195,21 @@ All requests and responses use `Content-Type: application/json`.
 
 ### Discovery
 
-#### `GET /api/v1/info`
-Returns metadata about the API — useful for confirming the server is running.
+#### `GET /api/v1`
+
+Returns metadata about the API — useful for confirming the server is running and discovering available resource collections.
 
 **Response:** `200 OK`
 ```json
 {
-  "api": "Smart Campus REST API",
+  "api": "Smart Campus Sensor & Room Management API",
   "version": "1.0",
-  "status": "running"
+  "contact": "admin@smartcampus.ac.uk",
+  "status": "running",
+  "resources": {
+    "rooms": "/api/v1/rooms",
+    "sensors": "/api/v1/sensors"
+  }
 }
 ```
 
@@ -212,9 +218,11 @@ Returns metadata about the API — useful for confirming the server is running.
 ### Rooms
 
 #### `GET /api/v1/rooms`
+
 Returns a list of all rooms currently registered in the system.
 
 **Response:** `200 OK`
+
 ```json
 [
   {
@@ -235,9 +243,11 @@ Returns a list of all rooms currently registered in the system.
 ---
 
 #### `POST /api/v1/rooms`
+
 Registers a new room.
 
 **Request body:**
+
 ```json
 {
   "id": "HALL-201",
@@ -247,6 +257,7 @@ Registers a new room.
 ```
 
 **Response:** `201 Created`
+
 ```json
 {
   "id": "HALL-201",
@@ -257,12 +268,14 @@ Registers a new room.
 ```
 
 **Validation rules:**
+
 - `id` is required — returns `400 Bad Request` if missing
 - `id` must be unique — returns `409 Conflict` if a room with that ID already exists
 
 ---
 
 #### `GET /api/v1/rooms/{roomId}`
+
 Retrieves a specific room by its ID.
 
 **Path parameter:** `roomId` — the unique room identifier
@@ -279,11 +292,13 @@ Retrieves a specific room by its ID.
 ---
 
 #### `DELETE /api/v1/rooms/{roomId}`
+
 Deletes a room. The room must have no sensors linked to it.
 
 **Path parameter:** `roomId` — the unique room identifier
 
 **Response:** `200 OK`
+
 ```json
 {
   "message": "Room 'HALL-201' deleted successfully."
@@ -291,9 +306,11 @@ Deletes a room. The room must have no sensors linked to it.
 ```
 
 **Business rule enforced:** If the room still has sensors assigned, deletion is **blocked**:
+
 - Returns `409 Conflict` with a message listing how many sensors must be removed first
 
 **Other errors:**
+
 - `404 Not Found` — room does not exist
 
 ---
@@ -301,11 +318,13 @@ Deletes a room. The room must have no sensors linked to it.
 ### Sensors
 
 #### `GET /api/v1/sensors`
+
 Returns all sensors. Optionally filter by sensor type using a query parameter.
 
 **Optional query parameter:** `?type=<value>` — case-insensitive match on sensor type
 
 Examples:
+
 - `GET /api/v1/sensors` — returns all sensors
 - `GET /api/v1/sensors?type=CO2` — returns only CO2 sensors
 - `GET /api/v1/sensors?type=temperature` — case-insensitive, returns Temperature sensors
@@ -315,9 +334,11 @@ Examples:
 ---
 
 #### `POST /api/v1/sensors`
+
 Registers a new sensor and links it to an existing room.
 
 **Request body:**
+
 ```json
 {
   "id": "HUM-001",
@@ -339,6 +360,7 @@ Registers a new sensor and links it to an existing room.
 6. Adds the sensor's ID to the room's `sensorIds` list (bidirectional link)
 
 **Validation rules:**
+
 - `id` is required → `400 Bad Request`
 - `id` must be unique → `409 Conflict`
 - `roomId` must reference an existing room → `422 Unprocessable Entity`
@@ -346,6 +368,7 @@ Registers a new sensor and links it to an existing room.
 ---
 
 #### `GET /api/v1/sensors/{sensorId}`
+
 Retrieves a specific sensor by its ID.
 
 **Response:** `200 OK` — the sensor object  
@@ -356,9 +379,11 @@ Retrieves a specific sensor by its ID.
 ### Sensor Readings
 
 #### `GET /api/v1/sensors/{sensorId}/readings`
+
 Returns the full reading history for a specific sensor, ordered by insertion time.
 
-**Response:** `200 OK` — array of reading objects (empty array `[]` if no readings yet)  
+**Response:** `200 OK` — array of reading objects (empty array `[]` if no readings yet)
+
 **Error:** `404 Not Found` if the sensor does not exist
 
 ```json
@@ -379,9 +404,11 @@ Returns the full reading history for a specific sensor, ordered by insertion tim
 ---
 
 #### `POST /api/v1/sensors/{sensorId}/readings`
+
 Records a new reading for a sensor.
 
 **Request body** (only `value` is required):
+
 ```json
 {
   "value": 25.7
@@ -540,7 +567,7 @@ All commands below assume the server is running on `http://localhost:8081`.
 
 ```bash
 # Check the API is running
-curl -X GET http://localhost:8081/api/v1/info
+curl -X GET http://localhost:8081/api/v1/
 ```
 
 ### Rooms
@@ -645,3 +672,198 @@ curl -X POST http://localhost:8081/api/v1/sensors/MNT-001/readings \
 - **Module:** 5COSC022W Client-Server Architectures
 - **University:** University of Westminster
 - **Academic Year:** 2025/26
+
+---
+
+## Conceptual Report — Question Answers
+
+### Part 1.1 — JAX-RS Resource Lifecycle
+
+**Question:** Explain the default lifecycle of a JAX-RS Resource class. Is a new instance instantiated for every incoming request, or does the runtime treat it as a singleton? How does this impact in-memory data management?
+
+By default, JAX-RS creates a **new instance of every resource class for each incoming HTTP request**. This is called per-request scope. Each time a client sends a request to `/api/v1/rooms`, for example, Jersey instantiates a fresh `RoomResource` object, processes the request, and then discards it.
+
+This design has a direct impact on how shared data must be managed. Because each resource instance is thrown away after the request, any data stored as an instance variable inside the resource class would be lost between calls — making it impossible to maintain state across requests that way.
+
+To solve this, this project uses the **Singleton design pattern** in the `DataStore` class. A single shared instance (`DataStore.INSTANCE`) is created once when the application starts and is accessed by every resource instance via `DataStore.getInstance()`. All data — rooms, sensors, and readings — lives inside this singleton, not inside the resource classes themselves.
+
+For thread safety, all maps in `DataStore` use `ConcurrentHashMap`. Since multiple requests can arrive simultaneously (each on its own thread), a standard `HashMap` could cause race conditions — two threads writing at the same time could corrupt the data structure. `ConcurrentHashMap` handles concurrent reads and writes safely without requiring explicit `synchronized` blocks, preventing data loss and corruption under concurrent load.
+
+---
+
+### Part 1.2 — HATEOAS and Hypermedia
+
+**Question:** Why is the provision of "Hypermedia" (links and navigation within responses) considered a hallmark of advanced RESTful design (HATEOAS)? How does this benefit client developers compared to static documentation?
+
+HATEOAS — Hypermedia as the Engine of Application State — is the principle that API responses should contain links guiding the client to related resources and available actions, rather than requiring the client to know every URL in advance.
+
+In this project, the discovery endpoint (`GET /api/v1/`) returns:
+
+```json
+{
+  "resources": {
+    "rooms": "/api/v1/rooms",
+    "sensors": "/api/v1/sensors"
+  }
+}
+```
+
+This means a client only needs to know one entry point — the root URL — and can discover all available resources from there by following the embedded links.
+
+**Benefits over static documentation:**
+
+- **Discoverability** — A client can explore the API programmatically without reading external docs. This is valuable for automated tooling and API testing frameworks.
+- **Reduced coupling** — If a URL path changes (e.g., `/api/v1/rooms` becomes `/api/v2/rooms`), clients following links from responses adapt automatically, whereas clients with hardcoded URLs break.
+- **Self-describing responses** — The API communicates what actions are possible from the current state, reducing the chance of clients making invalid requests.
+- **Easier onboarding** — New developers can navigate the API interactively, discovering resources and their relationships without needing a separate reference document.
+
+---
+
+### Part 2.1 — Returning IDs Only vs Full Room Objects
+
+**Question:** When returning a list of rooms, what are the implications of returning only IDs versus returning the full room objects? Consider network bandwidth and client-side processing.
+
+**Returning only IDs:**
+
+- Produces a much smaller response payload — a list of 1000 rooms would be a small JSON array of strings rather than a large array of full objects.
+- Reduces bandwidth consumption, which matters for mobile clients or high-traffic APIs.
+- However, the client must make a separate `GET /rooms/{id}` request for every room it needs details on. For a list of 100 rooms, this could mean 100 additional HTTP round trips — known as the N+1 problem — dramatically increasing latency and server load.
+- Suitable when clients rarely need full details (e.g., a dropdown list showing room names).
+
+**Returning full objects (this implementation):**
+
+- A single request returns everything the client needs — id, name, capacity, and sensorIds — in one response.
+- Eliminates the need for follow-up requests, reducing round trips and total latency.
+- Increases payload size, which could be a concern for very large collections.
+- Suitable when clients typically need full details to render their UI.
+
+**Decision for this project:** Full room objects are returned because clients managing campus rooms need all fields to perform useful operations. The dataset size (a campus has hundreds of rooms, not millions) makes the larger payload acceptable, and the elimination of N+1 requests improves overall responsiveness.
+
+---
+
+### Part 2.2 — Idempotency of DELETE
+
+**Question:** Is the DELETE operation idempotent in your implementation? Provide a detailed justification describing what happens if a client sends the same DELETE request multiple times.
+
+**Yes, DELETE is idempotent in this implementation**, consistent with the HTTP specification.
+
+Idempotency means that sending the same request multiple times produces the same server state as sending it once. The key distinction is between the *state of the server* and the *HTTP response code*.
+
+**Scenario — deleting a room that exists:**
+
+- First `DELETE /api/v1/rooms/HALL-201` — room is found, has no sensors, is removed from the `DataStore`. Returns `200 OK`.
+- Second `DELETE /api/v1/rooms/HALL-201` — room no longer exists. Returns `404 Not Found`.
+
+The server state after both calls is identical — `HALL-201` does not exist. The response code differs (200 vs 404), but that does not violate idempotency. The HTTP standard only requires the *server state* to be identical, not the response.
+
+**Scenario — deleting a room that has sensors:**
+
+- Any `DELETE /api/v1/rooms/LIB-301` while sensors are assigned — throws `RoomNotEmptyException`, returns `409 Conflict`. The room is never deleted. Repeated calls all return `409` and the room remains unchanged. This is also idempotent.
+
+---
+
+### Part 3.1 — @Consumes and Content-Type Mismatch
+
+**Question:** Explain the technical consequences if a client attempts to send data in a different format such as `text/plain` or `application/xml` when `@Consumes(MediaType.APPLICATION_JSON)` is declared.
+
+The `@Consumes(MediaType.APPLICATION_JSON)` annotation tells Jersey that this endpoint only accepts request bodies with `Content-Type: application/json`. If a client sends a request with a different content type, JAX-RS handles it as follows:
+
+**HTTP 415 Unsupported Media Type** is returned automatically by the Jersey runtime — before the resource method is even invoked. Jersey checks the `Content-Type` header of the incoming request against the `@Consumes` declaration. If they do not match, Jersey immediately rejects the request with a `415` response and never calls the resource method.
+
+This means:
+
+- `Content-Type: text/plain` → `415 Unsupported Media Type`
+- `Content-Type: application/xml` → `415 Unsupported Media Type`
+- No `Content-Type` header → `415 Unsupported Media Type`
+- `Content-Type: application/json` with a malformed JSON body → The request passes the content-type check but Jackson fails to deserialise, causing a `400 Bad Request`
+
+This is an important security and correctness boundary — it prevents unexpected data formats from reaching the business logic layer and guarantees that the resource method always receives a valid JSON-deserialised object.
+
+---
+
+### Part 3.2 — @QueryParam vs Path-Based Filtering
+
+**Question:** Contrast filtering via `@QueryParam` (e.g., `?type=CO2`) with a path-based alternative (e.g., `/sensors/type/CO2`). Why is the query parameter approach superior for filtering collections?
+
+**Query parameter approach (`GET /api/v1/sensors?type=CO2`):**
+
+- Filtering is optional — `GET /api/v1/sensors` returns all sensors; adding `?type=CO2` narrows the result. The same endpoint serves both use cases.
+- Semantically correct — the URL `/api/v1/sensors` identifies the sensors collection as the resource. The query string expresses *how to filter* that collection, not *what the resource is*.
+- Easy to combine multiple filters: `?type=CO2&status=ACTIVE` is natural and readable.
+- Bookmarkable and cacheable — query parameters are part of the URL and work correctly with HTTP caching headers.
+
+**Path-based approach (`GET /api/v1/sensors/type/CO2`):**
+
+- Creates a new route for every filter combination — `/sensors/type/CO2`, `/sensors/status/ACTIVE`, `/sensors/type/CO2/status/ACTIVE` — leading to route explosion as filters multiply.
+- Semantically misleading — it implies `type` and `CO2` are resource identifiers (like an ID), not filter criteria. This conflicts with REST conventions where path segments identify resources.
+- Conflicts with existing routes — `/sensors/{sensorId}` already uses a path parameter for sensor IDs. Adding `/sensors/type/CO2` creates ambiguity: is `type` a sensor ID?
+- Harder to make optional — you cannot omit the path segment to get unfiltered results without defining a separate route.
+
+Query parameters are the standard REST convention for filtering, searching, sorting, and pagination precisely because they are optional, composable, and semantically distinct from resource identification.
+
+---
+
+### Part 4.1 — Sub-Resource Locator Pattern
+
+**Question:** Discuss the architectural benefits of the Sub-Resource Locator pattern. How does delegating logic to separate classes help manage complexity in large APIs compared to defining every nested path in one massive controller class?
+
+The Sub-Resource Locator pattern allows a parent resource class to delegate handling of nested paths to a dedicated child resource class. In this project, `SensorResource` handles `/sensors` and `/sensors/{sensorId}`, and delegates `/sensors/{sensorId}/readings` to `SensorReadingResource`:
+
+```java
+@Path("/{sensorId}/readings")
+public SensorReadingResource getReadingsResource(@PathParam("sensorId") String sensorId) {
+    return new SensorReadingResource(sensorId);
+}
+```
+
+**Benefits:**
+
+- **Single Responsibility** — Each class has one clear job. `SensorResource` manages sensor CRUD. `SensorReadingResource` manages reading history. Neither class knows about the other's internals.
+- **Reduced file size and complexity** — In a large API, combining all nested paths into one class could produce hundreds of methods. Sub-resource locators keep classes small and readable.
+- **Independent development** — Different developers can work on `SensorResource` and `SensorReadingResource` simultaneously without merge conflicts.
+- **Context passing** — The locator method passes the `sensorId` to the child class constructor, giving it the context it needs without requiring the child to re-parse the URL.
+- **Easier testing** — `SensorReadingResource` can be unit tested in isolation by instantiating it directly with a sensor ID, without needing a full HTTP request lifecycle.
+- **Scalability** — Adding further nesting (e.g., `/sensors/{id}/readings/{readingId}/annotations`) is trivial — just add another sub-resource locator without modifying existing classes.
+
+---
+
+### Part 5.2 — HTTP 422 vs 404 for Missing roomId
+
+**Question:** Why is HTTP 422 often considered more semantically accurate than a standard 404 when the issue is a missing reference inside a valid JSON payload?
+
+**404 Not Found** means the *requested resource* — the URL itself — could not be found. When a client sends `POST /api/v1/sensors` with `"roomId": "GHOST-000"`, the URL `/api/v1/sensors` is perfectly valid and found. The problem is not with the URL.
+
+**422 Unprocessable Entity** means the server understood the request format (valid JSON, correct `Content-Type`), but the *semantic content* of the payload is invalid — specifically, it references something that does not exist within the system.
+
+The distinction is:
+
+- `404` → "I cannot find the endpoint you are calling"
+- `422` → "I found your endpoint, I read your JSON, but your data refers to something that doesn't exist"
+
+Using `404` here would be misleading — it would suggest to the client that the sensors endpoint itself is missing, which is false. A client receiving `404` might assume it has the wrong URL and retry with a different path, wasting time.
+
+Using `422` precisely communicates: "Your request was well-formed, your endpoint is correct, but the `roomId` value you provided (`GHOST-000`) does not exist in the system. Please provide a valid room ID." The client knows exactly what to fix.
+
+This semantic precision is a hallmark of well-designed APIs — clients can interpret error codes mechanically and respond correctly without having to parse the error message body.
+
+---
+
+### Part 5.4 — Security Risks of Exposing Stack Traces
+
+**Question:** From a cybersecurity standpoint, explain the risks associated with exposing internal Java stack traces to external API consumers. What specific information could an attacker gather?
+
+Exposing raw Java stack traces is a critical security vulnerability known as **information disclosure**. A stack trace can reveal:
+
+1. **Technology fingerprinting** — The full package names and class names reveal the exact frameworks in use (e.g., `org.glassfish.jersey`, `com.fasterxml.jackson`). An attacker can look up known CVEs (Common Vulnerabilities and Exposures) for those specific library versions and craft targeted exploits.
+
+2. **Internal project structure** — Package names like `com.smartcampus.storage.DataStore` reveal how the codebase is organised, making it easier to reason about attack surfaces and data access patterns.
+
+3. **Business logic details** — Method names in the trace (e.g., `RoomResource.deleteRoom`, `DataStore.getRooms`) reveal the internal business logic flow, helping attackers understand how to trigger specific code paths.
+
+4. **Error conditions and edge cases** — The specific exception type and message (e.g., `NullPointerException at line 47`) reveals exactly what input caused the crash, which an attacker can deliberately reproduce to cause denial-of-service or trigger unhandled states.
+
+5. **Server-side file paths** — Some traces include the absolute file paths of source files, revealing the server's directory structure.
+
+**Mitigation in this project:** The `GlobalExceptionMapper` catches all unhandled `Throwable` instances and returns only a generic `500 Internal Server Error` message with no trace details. Internal errors should be logged server-side (where only developers can see them) while the client receives only enough information to know something went wrong — not *how* or *why*.
+
+---
