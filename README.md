@@ -437,7 +437,6 @@ The API never exposes raw Java stack traces. Every error returns a structured JS
 | `RoomNotEmptyException` | `409 Conflict` | Attempting to delete a room that still has sensors assigned |
 | `LinkedResourceNotFoundException` | `422 Unprocessable Entity` | Creating a sensor with a `roomId` that does not exist |
 | `SensorUnavailableException` | `403 Forbidden` | Posting a reading to a sensor with `MAINTENANCE` status |
-| Any unhandled exception | `500 Internal Server Error` | Caught by `GlobalExceptionMapper` as a safety net |
 
 ### Error Response Format
 
@@ -499,8 +498,7 @@ Smart-Campus-System/
         └── mappers/
             ├── RoomNotEmptyMapper.java           ← Maps to HTTP 409
             ├── LinkedResourceNotFoundMapper.java ← Maps to HTTP 422
-            ├── SensorUnavailableMapper.java      ← Maps to HTTP 403
-            └── GlobalExceptionMapper.java        ← Catch-all for HTTP 500
+            └── SensorUnavailableMapper.java      ← Maps to HTTP 403
 ```
 
 ---
@@ -864,6 +862,6 @@ Exposing raw Java stack traces is a critical security vulnerability known as **i
 
 5. **Server-side file paths** — Some traces include the absolute file paths of source files, revealing the server's directory structure.
 
-**Mitigation in this project:** The `GlobalExceptionMapper` catches all unhandled `Throwable` instances and returns only a generic `500 Internal Server Error` message with no trace details. Internal errors should be logged server-side (where only developers can see them) while the client receives only enough information to know something went wrong — not *how* or *why*.
+**Mitigation in this project:** Each custom exception mapper (`RoomNotEmptyMapper`, `LinkedResourceNotFoundMapper`, `SensorUnavailableMapper`) returns a structured JSON error response with no internal details exposed. Internal errors should be logged server-side where only developers can see them, while the client receives only enough information to know something went wrong — not *how* or *why*.
 
 ---
