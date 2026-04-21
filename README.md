@@ -677,8 +677,6 @@ curl -X POST http://localhost:8081/api/v1/sensors/MNT-001/readings \
 
 ### Part 1.1 — JAX-RS Resource Lifecycle
 
-**Question:** Explain the default lifecycle of a JAX-RS Resource class. Is a new instance instantiated for every incoming request, or does the runtime treat it as a singleton? How does this impact in-memory data management?
-
 By default, JAX-RS creates a **new instance of every resource class for each incoming HTTP request**. This is called per-request scope. Each time a client sends a request to `/api/v1/rooms`, for example, Jersey instantiates a fresh `RoomResource` object, processes the request, and then discards it.
 
 This design has a direct impact on how shared data must be managed. Because each resource instance is thrown away after the request, any data stored as an instance variable inside the resource class would be lost between calls — making it impossible to maintain state across requests that way.
@@ -690,8 +688,6 @@ For thread safety, all maps in `DataStore` use `ConcurrentHashMap`. Since multip
 ---
 
 ### Part 1.2 — HATEOAS and Hypermedia
-
-**Question:** Why is the provision of "Hypermedia" (links and navigation within responses) considered a hallmark of advanced RESTful design (HATEOAS)? How does this benefit client developers compared to static documentation?
 
 HATEOAS — Hypermedia as the Engine of Application State — is the principle that API responses should contain links guiding the client to related resources and available actions, rather than requiring the client to know every URL in advance.
 
@@ -719,8 +715,6 @@ This means a client only needs to know one entry point — the root URL — and 
 
 ### Part 2.1 — Returning IDs Only vs Full Room Objects
 
-**Question:** When returning a list of rooms, what are the implications of returning only IDs versus returning the full room objects? Consider network bandwidth and client-side processing.
-
 **Returning only IDs:**
 
 - Produces a much smaller response payload — a list of 1000 rooms would be a small JSON array of strings rather than a large array of full objects.
@@ -741,8 +735,6 @@ This means a client only needs to know one entry point — the root URL — and 
 
 ### Part 2.2 — Idempotency of DELETE
 
-**Question:** Is the DELETE operation idempotent in your implementation? Provide a detailed justification describing what happens if a client sends the same DELETE request multiple times.
-
 **Yes, DELETE is idempotent in this implementation**, consistent with the HTTP specification.
 
 Idempotency means that sending the same request multiple times produces the same server state as sending it once. The key distinction is between the *state of the server* and the *HTTP response code*.
@@ -762,8 +754,6 @@ The server state after both calls is identical — `HALL-201` does not exist. Th
 
 ### Part 3.1 — @Consumes and Content-Type Mismatch
 
-**Question:** Explain the technical consequences if a client attempts to send data in a different format such as `text/plain` or `application/xml` when `@Consumes(MediaType.APPLICATION_JSON)` is declared.
-
 The `@Consumes(MediaType.APPLICATION_JSON)` annotation tells Jersey that this endpoint only accepts request bodies with `Content-Type: application/json`. If a client sends a request with a different content type, JAX-RS handles it as follows:
 
 **HTTP 415 Unsupported Media Type** is returned automatically by the Jersey runtime — before the resource method is even invoked. Jersey checks the `Content-Type` header of the incoming request against the `@Consumes` declaration. If they do not match, Jersey immediately rejects the request with a `415` response and never calls the resource method.
@@ -780,8 +770,6 @@ This is an important security and correctness boundary — it prevents unexpecte
 ---
 
 ### Part 3.2 — @QueryParam vs Path-Based Filtering
-
-**Question:** Contrast filtering via `@QueryParam` (e.g., `?type=CO2`) with a path-based alternative (e.g., `/sensors/type/CO2`). Why is the query parameter approach superior for filtering collections?
 
 **Query parameter approach (`GET /api/v1/sensors?type=CO2`):**
 
@@ -802,8 +790,6 @@ Query parameters are the standard REST convention for filtering, searching, sort
 ---
 
 ### Part 4.1 — Sub-Resource Locator Pattern
-
-**Question:** Discuss the architectural benefits of the Sub-Resource Locator pattern. How does delegating logic to separate classes help manage complexity in large APIs compared to defining every nested path in one massive controller class?
 
 The Sub-Resource Locator pattern allows a parent resource class to delegate handling of nested paths to a dedicated child resource class. In this project, `SensorResource` handles `/sensors` and `/sensors/{sensorId}`, and delegates `/sensors/{sensorId}/readings` to `SensorReadingResource`:
 
@@ -827,8 +813,6 @@ public SensorReadingResource getReadingsResource(@PathParam("sensorId") String s
 
 ### Part 5.2 — HTTP 422 vs 404 for Missing roomId
 
-**Question:** Why is HTTP 422 often considered more semantically accurate than a standard 404 when the issue is a missing reference inside a valid JSON payload?
-
 **404 Not Found** means the *requested resource* — the URL itself — could not be found. When a client sends `POST /api/v1/sensors` with `"roomId": "GHOST-000"`, the URL `/api/v1/sensors` is perfectly valid and found. The problem is not with the URL.
 
 **422 Unprocessable Entity** means the server understood the request format (valid JSON, correct `Content-Type`), but the *semantic content* of the payload is invalid — specifically, it references something that does not exist within the system.
@@ -847,8 +831,6 @@ This semantic precision is a hallmark of well-designed APIs — clients can inte
 ---
 
 ### Part 5.4 — Security Risks of Exposing Stack Traces
-
-**Question:** From a cybersecurity standpoint, explain the risks associated with exposing internal Java stack traces to external API consumers. What specific information could an attacker gather?
 
 Exposing raw Java stack traces is a critical security vulnerability known as **information disclosure**. A stack trace can reveal:
 
