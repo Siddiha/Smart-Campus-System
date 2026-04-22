@@ -3,7 +3,6 @@ com\smartcampus\model\Sensor.class
 com\smartcampus\Main.class
 com\smartcampus\exception\SensorUnavailableException.class
 com\smartcampus\exception\LinkedResourceNotFoundException.class
-com\smartcampus\exception\mappers\GlobalExceptionMapper.class
 com\smartcampus\exception\mappers\RoomNotEmptyMapper.class
 com\smartcampus\storage\DataStore.class
 com\smartcampus\resource\SensorResource.class
